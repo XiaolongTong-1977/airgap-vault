@@ -29,6 +29,7 @@ export class SecretRulesPage {
 
   public goToShowSecret(): void {
     this.navigationService.routeWithState('secret-show', { secret: this.secret }).catch(handleErrorLocal(ErrorCategory.IONIC_NAVIGATION))
+    this.understood = true
   }
 
   public onCheckboxChanged(): void {

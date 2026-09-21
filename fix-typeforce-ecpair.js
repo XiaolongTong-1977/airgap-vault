@@ -30,8 +30,8 @@ types.Point = function (value) {
     typeof value === 'object' &&
     typeof value.add === 'function' &&
     typeof value.multiply === 'function' &&
-    typeof value.getX === 'function' &&
-    typeof value.getY === 'function'
+    typeof value.equals === 'function' &&
+    typeof value.negate === 'function'
   )
 }
 types.Point.toJSON = function () { return 'Point' }
@@ -93,8 +93,8 @@ function ECPointDuck (value) {
     typeof value === 'object' &&
     typeof value.add === 'function' &&
     typeof value.multiply === 'function' &&
-    typeof value.getX === 'function' &&
-    typeof value.getY === 'function'
+    typeof value.equals === 'function' &&
+    typeof value.negate === 'function'
   )
 }
 ECPointDuck.toJSON = function () { return 'Point' }

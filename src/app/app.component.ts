@@ -202,19 +202,32 @@ export class AppComponent implements AfterViewInit {
     const externalMethodProvider: TezosSaplingExternalMethodProvider | undefined =
       await this.saplingNativeService.createExternalMethodProvider()
 
-    const shieldedTezAdapter: ICoinProtocolAdapter<TezosShieldedTezProtocol> = await createV0TezosShieldedTezProtocol({
-      externalProvider: externalMethodProvider
-    })
+    let shieldedTezAdapter: ICoinProtocolAdapter<TezosShieldedTezProtocol> | undefined
+    if (externalMethodProvider) {
+      try {
+        shieldedTezAdapter = await createV0TezosShieldedTezProtocol({
+          externalProvider: externalMethodProvider
+        })
+      } catch (e) {
+        console.warn('Sapling shielded Tez protocol not available, skipping:', e)
+      }
+    }
 
     this.protocolService.init({
       activeProtocols: protocols.activeProtocols,
       passiveProtocols: protocols.passiveProtocols,
-      extraActiveProtocols: [shieldedTezAdapter],
+      extraActiveProtocols: shieldedTezAdapter ? [shieldedTezAdapter] : [],
       activeSubProtocols: protocols.activeSubProtocols,
       passiveSubProtocols: protocols.passiveSubProtocols
     })
 
-    await shieldedTezAdapter.protocolV1.initParameters(await this.getSaplingParams('spend'), await this.getSaplingParams('output'))
+    if (shieldedTezAdapter) {
+      try {
+        await shieldedTezAdapter.protocolV1.initParameters(await this.getSaplingParams('spend'), await this.getSaplingParams('output'))
+      } catch (e) {
+        console.warn('Sapling parameter init failed, shielded XTZ may not work:', e)
+      }
+    }
   }
 
   private async getSaplingParams(type: 'spend' | 'output'): Promise<Buffer> {

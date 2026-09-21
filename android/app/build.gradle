@@ -21,24 +21,20 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
-            // Exclude non-16KB-aligned native libraries so Android 15+ does not
-            // block app launch. These are optional features:
-            //   libsapling.so — Sapling shielded transactions (not needed for our tests)
-            //   libtool-checker.so — RootBeer root detection (not needed for our tests)
-            //   libsqlc-ndk-native-driver.so — SQLite NDK driver (falls back to localStorage)
+            // Exclude non-16KB-aligned native libs (Android 15+ blocks launch).
+            //   libsapling.so — Sapling shielded tx (upstream not 16KB-aligned)
+            //   libtool-checker.so — RootBeer root detection (not critical)
+            // Note: libsqlc-ndk-native-driver.so is no longer needed because
+            // cordova-sqlite-storage was removed; storage falls back to localStorage.
             excludes += [
                 'lib/arm64-v8a/libsapling.so',
                 'lib/arm64-v8a/libtool-checker.so',
-                'lib/arm64-v8a/libsqlc-ndk-native-driver.so',
                 'lib/armeabi-v7a/libsapling.so',
                 'lib/armeabi-v7a/libtool-checker.so',
-                'lib/armeabi-v7a/libsqlc-ndk-native-driver.so',
                 'lib/x86/libsapling.so',
                 'lib/x86/libtool-checker.so',
-                'lib/x86/libsqlc-ndk-native-driver.so',
                 'lib/x86_64/libsapling.so',
-                'lib/x86_64/libtool-checker.so',
-                'lib/x86_64/libsqlc-ndk-native-driver.so'
+                'lib/x86_64/libtool-checker.so'
             ]
         }
     }
@@ -139,4 +135,40 @@ apply from: 'capacitor.build.gradle'
 configurations.all {
     exclude group: 'com.google.firebase', module: ''
     exclude group: 'com.google.android.gms', module: ''
+}
+
+// Align native .so files to 16KB page boundary for Android 15+ compatibility.
+// Injected directly into the strip tasks' doLast so the aligned files are
+// written before packageDebug reads them as inputs.
+def alignSoFiles = { File dir ->
+    def pythonScript = rootProject.file('../align_so_16kb.py')
+    if (!dir.exists()) return
+    dir.eachFileRecurse { f ->
+        if (f.name.endsWith('.so')) {
+            def cmd = ['python3', pythonScript.absolutePath, f.absolutePath, f.absolutePath]
+            def proc = cmd.execute()
+            def out = new StringBuffer()
+            def err = new StringBuffer()
+            proc.consumeProcessOutput(out, err)
+            proc.waitFor()
+            if (proc.exitValue() != 0) {
+                println "[align16KB] SKIP: ${f.name}: ${err.toString().split('\n')[0]}"
+            } else {
+                println "[align16KB] OK: ${f.name}"
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name == 'stripDebugDebugSymbols' }.all { task ->
+        task.doLast {
+            alignSoFiles(file("${buildDir}/intermediates/stripped_native_libs/debug/stripDebugDebugSymbols/out/lib"))
+        }
+    }
+    tasks.matching { it.name == 'stripReleaseReleaseSymbols' }.all { task ->
+        task.doLast {
+            alignSoFiles(file("${buildDir}/intermediates/stripped_native_libs/release/stripReleaseReleaseSymbols/out/lib"))
+        }
+    }
 }
