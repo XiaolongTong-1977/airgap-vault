@@ -28,7 +28,7 @@ export class SecretGeneratePage implements OnInit {
 
   public cameraEnabled: boolean = true
   public audioEnabled: boolean = true
-  public gyroEnabled: boolean = false
+  public gyroEnabled: boolean = true
   public touchEnabled: boolean = true
 
   private readonly ENTROPY_STARTUP_TIME: number = 5
@@ -107,14 +107,13 @@ export class SecretGeneratePage implements OnInit {
     const enabledSources: boolean[] = [this.audioEnabled, this.cameraEnabled, this.gyroEnabled, this.touchEnabled]
     const percentageNeeded: number = enabledSources.reduce((previous: number, isEnabled: boolean) => previous + (isEnabled ? 100 : 0), 0)
 
-    const camera: number = Math.min(100, this.cameraService.getCollectedEntropyPercentage())
-    const audio: number = Math.min(100, this.audioService.getCollectedEntropyPercentage())
-    const gyro: number = Math.min(100, this.gyroService.getCollectedEntropyPercentage())
-    const touch: number = Math.min(100, this.touchEntropy.getCollectedEntropyPercentage())
-
-    const collectedTotal: number = audio + camera + gyro + touch
-
-    if (collectedTotal >= percentageNeeded || camera >= 100 || audio >= 100) {
+    if (
+      Math.min(100, this.audioService.getCollectedEntropyPercentage()) +
+        Math.min(100, this.cameraService.getCollectedEntropyPercentage()) +
+        Math.min(100, this.gyroService.getCollectedEntropyPercentage()) +
+        Math.min(100, this.touchEntropy.getCollectedEntropyPercentage()) >=
+      percentageNeeded
+    ) {
       this.entropy.isFull = true
     }
   }

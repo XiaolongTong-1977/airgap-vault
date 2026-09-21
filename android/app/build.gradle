@@ -18,6 +18,16 @@ android {
         versionName "0.0.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
+    packagingOptions {
+        jniLibs {
+            // Android Gradle Plugin 8.5+ will align .so LOAD segments to 16KB
+            // for devices that opt into 16KB page-size kernels (Android 15+).
+            // Keep this off until we have new releases of airgap-sapling,
+            // rootbeer-lib and sqlite-ndk-native-driver that ship 16KB-aligned
+            // binaries; otherwise AGP will warn but still use the existing .so.
+            useLegacyPackaging false
+        }
+    }
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {

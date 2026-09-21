@@ -37,3 +37,8 @@ Thumbs.db
 UserInterfaceState.xcuserstate
 
 src/assets/protocol_modules/
+
+# Android release keystore — never commit credentials
+keystore.properties
+*.keystore
+*.jks
