@@ -13,6 +13,8 @@ import it.airgap.vault.plugin.securityutils.SecurityUtils;
 import it.airgap.vault.plugin.zip.Zip;
 
 public class MainActivity extends BridgeActivity {
+  private static final int MAX_SAVED_STATE_BYTES = 500_000;
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(CameraPreview.class);
@@ -25,5 +27,16 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(IsolatedModules.class);
 
     super.onCreate(savedInstanceState);
+  }
+
+  @Override
+  public void onSaveInstanceState(Bundle outState) {
+    Bundle safe = new Bundle();
+    super.onSaveInstanceState(safe);
+    if (safe.size() > MAX_SAVED_STATE_BYTES) {
+      outState.clear();
+      return;
+    }
+    outState.putAll(safe);
   }
 }
