@@ -7,6 +7,7 @@ import { IonModal, PopoverController } from '@ionic/angular'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { MnemonicSecret } from 'src/app/models/secret'
+import { ARBITRUM_PROTOCOL_IDENTIFIER } from '../../protocols/arbitrum/protocol'
 import { AdvancedModeType, VaultStorageKey, VaultStorageService } from 'src/app/services/storage/storage.service'
 
 import { ErrorCategory, handleErrorLocal } from '../../services/error-handler/error-handler.service'
@@ -144,7 +145,8 @@ export class AccountAddressPage {
       this.protocolIdentifier = protocolIdentifier
       this.protocolName = protocolName
 
-      switch (protocolIdentifier) {
+      const identifier = protocolIdentifier as string
+      switch (identifier) {
         case MainProtocolSymbols.BTC:
         case MainProtocolSymbols.BTC_SEGWIT:
           this.syncOptions = [airgapwallet, bluewallet, sparrowwallet, specterwallet, nunchukwallet]
@@ -156,6 +158,7 @@ export class AccountAddressPage {
         case MainProtocolSymbols.OPTIMISM:
         case MainProtocolSymbols.BNB:
         case MainProtocolSymbols.BASE:
+        case ARBITRUM_PROTOCOL_IDENTIFIER:
           this.syncOptions = [airgapwallet]
           if (this.wallet.isExtendedPublicKey) {
             this.syncOptions.push(metamask, imtoken, rabby)
