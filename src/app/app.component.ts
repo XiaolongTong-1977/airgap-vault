@@ -1,6 +1,7 @@
 import { AeternityModule } from '@airgap/aeternity'
 import {
   APP_PLUGIN,
+  createICoinProtocolAdapter,
   createV0TezosShieldedTezProtocol,
   IACMessageTransport,
   ICoinProtocolAdapter,
@@ -24,6 +25,8 @@ import { PolkadotModule } from '@airgap/polkadot'
 import { TezosModule, TezosSaplingExternalMethodProvider, TezosShieldedTezProtocol } from '@airgap/tezos'
 import { AcurastModule } from '@airgap/acurast'
 import { StellarModule } from '@airgap/stellar'
+import { createArbitrumProtocol } from './protocols/arbitrum/protocol'
+import { EtherscanBlockExplorer } from '@airgap/ethereum/v1'
 import { HttpClient } from '@angular/common/http'
 import { AfterViewInit, Component, Inject, NgZone } from '@angular/core'
 import { AppPlugin, URLOpenListenerEvent } from '@capacitor/app'
@@ -213,10 +216,25 @@ export class AppComponent implements AfterViewInit {
       }
     }
 
+    // Create Arbitrum protocol (same address format as ETH: 0x...)
+    let arbitrumAdapter: ICoinProtocolAdapter<any> | undefined
+    try {
+      const arbitrumProtocol = createArbitrumProtocol()
+      const arbitrumBlockExplorer = new EtherscanBlockExplorer('https://arbiscan.io')
+      arbitrumAdapter = (await createICoinProtocolAdapter(arbitrumProtocol, arbitrumBlockExplorer, undefined, {
+        type: 'offline'
+      })) as ICoinProtocolAdapter<any>
+    } catch (e) {
+      console.warn('Arbitrum protocol init failed:', e)
+    }
+
     this.protocolService.init({
       activeProtocols: protocols.activeProtocols,
       passiveProtocols: protocols.passiveProtocols,
-      extraActiveProtocols: shieldedTezAdapter ? [shieldedTezAdapter] : [],
+      extraActiveProtocols: [
+        ...(shieldedTezAdapter ? [shieldedTezAdapter] : []),
+        ...(arbitrumAdapter ? [arbitrumAdapter] : [])
+      ],
       activeSubProtocols: protocols.activeSubProtocols,
       passiveSubProtocols: protocols.passiveSubProtocols
     })
