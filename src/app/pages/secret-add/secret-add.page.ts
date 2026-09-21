@@ -40,9 +40,6 @@ export class SecretAddPage {
       this.isGenerating = this.navigationService.getState().isGenerating
       this.secret = this.navigationService.getState().secret
       this.isAndroid = this.platform.is('android')
-      if (!this.secret.label || this.secret.label.length === 0) {
-        this.secret.label = 'secret'
-      }
 
       const matches = this.secret.fingerprint ? this.secret.fingerprint.match(/.{1,2}/g) : null
       const bytes = matches
