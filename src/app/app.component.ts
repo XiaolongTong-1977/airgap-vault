@@ -52,8 +52,21 @@ import { StartupChecksService } from './services/startup-checks/startup-checks.s
 import { LanguagesType, VaultStorageKey, VaultStorageService } from './services/storage/storage.service'
 import { Router } from '@angular/router'
 import { EdgeToEdge } from '@capawesome/capacitor-android-edge-to-edge-support'
+import { registerPlugin } from '@capacitor/core'
 
 declare let window: Window & { airGapHasStarted: boolean }
+
+interface LegacyStorageMigrationResult {
+  found: boolean
+  entries: { key: string; value: string }[]
+}
+
+const LegacyStorageMigrationPlugin = registerPlugin<{ migrate(): Promise<LegacyStorageMigrationResult> }>(
+  'LegacyStorageMigration'
+)
+
+/** Ionic Storage `name` — doubles as the localforage localStorage key prefix. */
+const LOCALFORAGE_NAME = '__airgap_storage'
 
 const defer = (fn: () => void) => {
   // fn()
@@ -98,7 +111,10 @@ export class AppComponent implements AfterViewInit {
   }
 
   public async initializeApp(): Promise<void> {
-    await Promise.all([this.platform.ready(), this.initializeTranslations(), this.initializeProtocols()])
+    await this.platform.ready()
+    // One-shot legacy storage migration must run before any storage read.
+    await this.migrateLegacyStorageIfNeeded()
+    await Promise.all([this.initializeTranslations(), this.initializeProtocols()])
 
     if (this.platform.is('hybrid')) {
       this.statusBar.setStyle({ style: Style.Dark })
@@ -119,6 +135,48 @@ export class AppComponent implements AfterViewInit {
     await this.startupChecks.initChecks()
 
     this.isInitialized.resolve()
+  }
+
+  /**
+   * One-shot migration of vault metadata from the legacy cordova-sqlite-storage
+   * backend (removed in 3.35.0) into the WebView localStorage driver.
+   *
+   * Runs before any storage read. The native side reads the raw
+   * (key, serializedValue) pairs from the old SQLite `keyvaluepairs` table and
+   * the pairs are copied verbatim into localStorage under the localforage
+   * localStorage key prefix (`__airgap_storage/<key>`), so Ionic Storage
+   * deserializes them transparently.
+   */
+  private async migrateLegacyStorageIfNeeded(): Promise<void> {
+    if (!this.platform.is('hybrid')) {
+      return
+    }
+
+    const doneFlag = '__airgap_storage_migration_v3_35_0_done'
+    if (localStorage.getItem(doneFlag)) {
+      return
+    }
+
+    try {
+      const result = await LegacyStorageMigrationPlugin.migrate()
+      const entries: { key: string; value: string }[] = result?.entries ?? []
+
+      for (const entry of entries) {
+        const storageKey = `${LOCALFORAGE_NAME}/${entry.key}`
+        if (entry.key != null && localStorage.getItem(storageKey) === null) {
+          localStorage.setItem(storageKey, entry.value)
+        }
+      }
+
+      if (entries.length > 0) {
+        console.log(`[migration] imported ${entries.length} legacy storage entries`)
+      }
+    } catch (e) {
+      // No legacy DB / plugin unavailable — nothing to migrate.
+      console.warn('[migration] legacy storage migration skipped:', e)
+    } finally {
+      localStorage.setItem(doneFlag, '1')
+    }
   }
 
   public async ngAfterViewInit(): Promise<void> {

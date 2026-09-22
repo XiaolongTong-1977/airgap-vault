@@ -8,6 +8,7 @@ import it.airgap.vault.plugin.appinfo.AppInfo;
 import it.airgap.vault.plugin.camerapreview.CameraPreview;
 import it.airgap.vault.plugin.environment.Environment;
 import it.airgap.vault.plugin.isolatedmodules.IsolatedModules;
+import it.airgap.vault.plugin.legacystorage.LegacyStorageMigration;
 import it.airgap.vault.plugin.saplingnative.SaplingNative;
 import it.airgap.vault.plugin.securityutils.SecurityUtils;
 import it.airgap.vault.plugin.zip.Zip;
@@ -25,6 +26,7 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(Environment.class);
 
     registerPlugin(IsolatedModules.class);
+    registerPlugin(LegacyStorageMigration.class);
 
     super.onCreate(savedInstanceState);
   }

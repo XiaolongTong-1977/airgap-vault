@@ -65,6 +65,13 @@ class Zip : Plugin() {
     private suspend fun ZipInputStream.unzip(entry: ZipEntry, destination: File) {
         val file = File(destination, entry.name).takeIf { shouldCopy(it) } ?: return
 
+        // Zip Slip protection: reject entries that escape the destination directory
+        val destCanonical = destination.canonicalPath
+        val targetCanonical = file.canonicalPath
+        if (targetCanonical != destCanonical && !targetCanonical.startsWith(destCanonical + File.separator)) {
+            throw IOException("Zip entry escapes destination: ${entry.name}")
+        }
+
         if (entry.isDirectory) {
             if (!file.isDirectory && !file.mkdirs()) throw IOException("Failed to create directory ${file.path}")
             return

@@ -1,15 +1,29 @@
-<ion-row class="rawdata--container ion-padding-bottom" *ngIf="_messages[0]">
+<ion-row class="rawdata--container ion-padding-bottom" *ngIf="_messages.length > 1">
   <ion-col class="ion-no-padding">
-    <p>{{ 'message-signing-request.payload_label' | translate }}</p>
-    <pre class="ion-no-margin">{{ _messages[0].data | json }}</pre>
+    <ion-card color="warning" class="ion-padding">
+      <p class="ion-no-margin">
+        <strong>{{ _messages.length }} messages</strong> will be signed. Review every message below before signing.
+      </p>
+    </ion-card>
   </ion-col>
 </ion-row>
-<ion-row class="rawdata--container" *ngIf="_messages[0].blake2bHash">
-  <ion-col class="ion-no-padding">
-    <p>{{ 'message-signing-request.blake2b_hash' | translate }}</p>
-    <pre class="ion-no-margin">{{ _messages[0].blake2bHash }}</pre>
-  </ion-col>
-</ion-row>
+
+<ng-container *ngFor="let message of _messages; let i = index">
+  <ion-row class="rawdata--container ion-padding-bottom" *ngIf="message">
+    <ion-col class="ion-no-padding">
+      <p *ngIf="_messages.length > 1">Message {{ i + 1 }} of {{ _messages.length }}</p>
+      <p *ngIf="_messages.length === 1">{{ 'message-signing-request.payload_label' | translate }}</p>
+      <pre class="ion-no-margin">{{ message.data | json }}</pre>
+    </ion-col>
+  </ion-row>
+  <ion-row class="rawdata--container" *ngIf="message.blake2bHash">
+    <ion-col class="ion-no-padding">
+      <p>{{ 'message-signing-request.blake2b_hash' | translate }}</p>
+      <pre class="ion-no-margin">{{ message.blake2bHash }}</pre>
+    </ion-col>
+  </ion-row>
+</ng-container>
+
 <ion-row class="ion-padding-top" *ngIf="_messages[0]">
   <ion-col class="ion-no-padding">
     <ion-button expand="block" color="secondary" (click)="copyEncodedMessage()">
