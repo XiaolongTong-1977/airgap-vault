@@ -25,6 +25,14 @@ import { SelectAccountPage } from 'src/app/pages/select-account/select-account.p
 import { RawTypedEthereumTransaction } from '@airgap/ethereum/v0/types/transaction-ethereum'
 import { IACMessageType, IACMessageDefinitionObjectV3, MessageSignRequest } from '@airgap/serializer'
 import { BitcoinSegwitTransactionSignRequest } from '@airgap/bitcoin'
+import { ARBITRUM_PROTOCOL_IDENTIFIER } from 'src/app/protocols/arbitrum/protocol'
+
+const isEthereumFamilyProtocol = (protocol: string): boolean =>
+  protocol === MainProtocolSymbols.ETH ||
+  protocol === MainProtocolSymbols.OPTIMISM ||
+  protocol === MainProtocolSymbols.BNB ||
+  protocol === MainProtocolSymbols.BASE ||
+  protocol === ARBITRUM_PROTOCOL_IDENTIFIER
 
 @Injectable({
   providedIn: 'root'
@@ -111,11 +119,24 @@ export class IACService extends BaseIACService {
   ): Promise<boolean> {
     const messageDefinitionObjects: IACMessageDefinitionObjectV3[] = messageWrapper.result
 
-    const transactionInfos: SignTransactionInfo[] = await Promise.all(
-      messageDefinitionObjects.map(async (messageDefinitionObject): Promise<SignTransactionInfo> => {
-        return this.findMatchingSignWallet(messageDefinitionObject, messageWrapper.context)
+    const transactionInfos: SignTransactionInfo[] = (
+      await Promise.all(
+        messageDefinitionObjects.map(async (messageDefinitionObject): Promise<SignTransactionInfo> => {
+          return this.findMatchingSignWallet(messageDefinitionObject, messageWrapper.context)
+        })
+      )
+    ).filter((signTransactionDetails) => signTransactionDetails.wallet !== undefined)
+
+    if (transactionInfos.length === 0) {
+      this.uiEventService.showTranslatedAlert({
+        header: 'tab-wallets.no-secret_alert.title',
+        message: 'tab-wallets.no-secret_alert.text',
+        buttons: [{ text: 'tab-wallets.no-secret_alert.okay_label', role: 'cancel' }]
       })
-    )
+
+      return false
+    }
+
     this.navigationService
       .routeWithState('deserialized-detail', {
         transactionInfos: transactionInfos,
@@ -215,21 +236,16 @@ export class IACService extends BaseIACService {
     }
 
     // ETH: MetaMask requests don't contain the public key information, we need to do the matching based on the sourceFingerprint
-    if (
-      !correctWallet &&
-      (signTransactionRequest.protocol === MainProtocolSymbols.ETH ||
-        signTransactionRequest.protocol === MainProtocolSymbols.OPTIMISM ||
-        signTransactionRequest.protocol === MainProtocolSymbols.BNB ||
-        signTransactionRequest.protocol === MainProtocolSymbols.BASE)
-    ) {
+    // Arbitrum uses the same address/derivation format as ETH (m/44'/60'/0'), so it is matched the same way.
+    if (!correctWallet && isEthereumFamilyProtocol(signTransactionRequest.protocol as string)) {
       const transaction: RawTypedEthereumTransaction = unsignedTransaction.transaction
 
       const fingerprint = transaction.masterFingerprint ?? metadata.sourceFingerprint
       const derivationPath = transaction.derivationPath ?? metadata.derivationPath
 
-      correctWallet = await this.findMetaMaskWallet(fingerprint, signTransactionRequest.protocol, derivationPath)
+      correctWallet = await this.findMetaMaskWallet(fingerprint, signTransactionRequest.protocol as MainProtocolSymbols, derivationPath)
 
-      if (correctWallet && !derivationPath.startsWith(correctWallet.derivationPath.slice(2) /* Remove leading "m/" */)) {
+      if (correctWallet && derivationPath && !derivationPath.startsWith(correctWallet.derivationPath.slice(2) /* Remove leading "m/" */)) {
         throw new Error('Derivation path of the request does not match the one of the selected wallet')
       }
 
@@ -244,6 +260,22 @@ export class IACService extends BaseIACService {
 
     if (!correctWallet) {
       correctWallet = await this.findBaseWallet(unsignedTransaction.publicKey, signTransactionRequest)
+    }
+
+    if (!correctWallet) {
+      // No matching wallet found. Return an empty match so the caller can show the
+      // "no secret" prompt instead of crashing on undefined.
+      console.warn('IAC: no matching wallet found for sign request', {
+        protocol: signTransactionRequest.protocol,
+        hasPublicKey: unsignedTransaction.publicKey !== undefined,
+        metadata
+      })
+
+      return {
+        wallet: undefined,
+        secret: undefined,
+        signTransactionRequest
+      }
     }
 
     const secret = this.secretsService.findByPublicKey(correctWallet.publicKey)
@@ -271,10 +303,19 @@ export class IACService extends BaseIACService {
     )
 
     // ETH: MetaMask requests don't contain the public key information, we need to do the matching based on the sourceFingerprint
-    if (!correctWallet && messageDefinitionObject.protocol === MainProtocolSymbols.ETH) {
-      correctWallet = await this.findMetaMaskWallet(metadata.sourceFingerprint, messageDefinitionObject.protocol, metadata.derivationPath)
+    // Arbitrum shares ETH's address/derivation format, so it is matched the same way.
+    if (!correctWallet && isEthereumFamilyProtocol(messageDefinitionObject.protocol as string)) {
+      correctWallet = await this.findMetaMaskWallet(
+        metadata.sourceFingerprint,
+        messageDefinitionObject.protocol as MainProtocolSymbols,
+        metadata.derivationPath
+      )
 
-      if (correctWallet && !metadata.derivationPath.startsWith(correctWallet.derivationPath.slice(2) /* Remove leading "m/" */)) {
+      if (
+        correctWallet &&
+        metadata.derivationPath &&
+        !metadata.derivationPath.startsWith(correctWallet.derivationPath.slice(2) /* Remove leading "m/" */)
+      ) {
         throw new Error('Derivation path of the request does not match the one of the selected wallet')
       }
     }
@@ -285,6 +326,22 @@ export class IACService extends BaseIACService {
 
     if (!correctWallet) {
       correctWallet = await this.findBaseWallet(messageSignRequest.publicKey, messageDefinitionObject)
+    }
+
+    if (!correctWallet) {
+      console.warn('IAC: no matching wallet found for message sign request', { protocol: messageDefinitionObject.protocol, metadata })
+
+      return {
+        wallet: undefined,
+        secret: undefined,
+        signTransactionRequest: {
+          ...messageDefinitionObject,
+          payload: {
+            ...messageSignRequest,
+            publicKey: ''
+          }
+        }
+      }
     }
 
     const secret = this.secretsService.findByPublicKey(correctWallet.publicKey)
