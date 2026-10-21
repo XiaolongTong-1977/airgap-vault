@@ -1,14 +1,52 @@
 # AirGap Vault — GrapheneOS 定制版
 
-> **Fork 说明**:本仓库是面向 **GrapheneOS** 设备定制的 AirGap Vault,基于上游 [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault)。
->
-> 定制内容:
-> - Arbitrum (ARB) 协议支持,地址与 ETH 相同,支持 MetaMask/Rabby/imToken 二维码同步
-> - 修复扫码授权黑屏(Arbitrum 签名请求钱包匹配失败 / 空钱包崩溃)
-> - Android 15 (16KB 页对齐)、typeforce 压缩混淆、SQLite 移除等构建修复
-> - 审计驱动的安全修复(ZIP Slip、消息显示、存储迁移等)
+> **Fork 说明**:本仓库是面向 **GrapheneOS** 设备定制的 AirGap Vault,基于上游 [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault)(v3.35.0)。
 >
 > ⚠️ 本仓库工作区中的 debug 旁路改动仅供本地调试,发布版本不含这些旁路。
+
+## 本 Fork 修改说明
+
+以下全部修改由 XiaolongTong-1977 完成,按类别列出:
+
+### 新功能
+
+- **Arbitrum (ARB) 协议支持**(`cafe7c99`)
+  - 新增 `src/app/protocols/arbitrum/` 协议实现(EIP-1559,chainId 42161,Arbiscan 浏览器)
+  - **Arbitrum 地址与 ETH 完全相同**(与 Rabby/MetaMask 等其他 Web3 钱包行为一致),共用派生路径 `m/44'/60'/0'`
+- **Arbitrum 账户多钱包同步**(`c398ded6`)
+  - 通过 `patch-metamask-arbitrum.js`(postinstall 自动执行)扩展 MetaMaskGenerator 白名单
+  - Arbitrum 账户的分享二维码除 AirGap Wallet 外,可选 MetaMask / Rabby / imToken 同步
+
+### Bug 修复
+
+- **无法创建账户崩溃修复**(`00dab803`)
+  - 修复钱包内添加 ETH/BTC 等任意品种账户时的崩溃(`MainActivity.onSaveInstanceState`)
+- **扫码授权黑屏修复**(`a4eca21c`)
+  - 扫码 ETH-SIGN-REQUEST 后相机黑屏、授权无法继续:Arbitrum 签名请求未纳入 ETH 系列钱包匹配,匹配失败后在 `iac.service.ts` 读 `undefined.publicKey` 抛异常
+  - 修复:`'arbitrum'` 纳入 MetaMask 风格签名匹配(交易签名 + 消息签名两条路径),找不到钱包时优雅弹提示而非崩溃
+
+### 构建修复
+
+- **Android 15 支持:16KB 页对齐**(`e9e21542`)
+  - 适配 Android 15 的 16KB 页大小要求;`libsapling.so`/`libtool-checker.so`/`libsqlc-ndk-native-driver.so` 对齐警告待从源码重编译加 `-Wl,-z,max-page-size=16384` 彻底消除
+- **webpack 压缩混淆导致的签名失败修复**(`391513cc`、`e9e21542`)
+  - typeforce 的 ECPair/Point/BigInteger 依赖 `constructor.name`,生产压缩后被混淆导致 BTC 签名报类型错误;`fix-typeforce-ecpair.js` 改为鸭子类型校验
+- **移除 SQLite 依赖**(`e9e21542`)
+
+### 安全修复(10 agents 审计 + 5 agents 对抗审计驱动)
+
+- 4 项发布前必修复项(`19ecac4b`):ZIP Slip 路径穿越(canonical path 校验)、多消息二维码全量显示、旧版存储迁移插件、MetaMask Arbitrum 补丁
+- 发布准备(`d0617a14`、`becbdb68`):回滚全部 debug 旁路、关闭 WebView 远程调试(release 自动生效)
+
+### 调试旁路(仅限本地 debug 构建,见工作区未提交改动)
+
+- `secret-generate`:默认关闭陀螺仪、放宽熵源判定(因 CSPRNG 双重混合设计,不削弱最终密钥熵)
+- `secret-rules`:去掉勾选确认门禁
+- `secret-show`:跳过最短查看时间
+- `secret-add`:自动生成 label
+- `build.gradle`:debug 构建复用 release 签名密钥(便于 `adb install -r` 覆盖安装保留数据)
+
+**发布版本均不含上述旁路**(构建时 stash)。
 
 <p align="left">
     <img src="./banner.png" />
