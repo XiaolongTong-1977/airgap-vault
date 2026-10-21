@@ -68,7 +68,7 @@ export class SecretShowPage {
   }
 
   public goToValidateSecret(): void {
-    if (this.startTime.getTime() + SHOW_SECRET_MIN_TIME_IN_SECONDS * 1000 > new Date().getTime()) {
+    if (false && this.startTime.getTime() + SHOW_SECRET_MIN_TIME_IN_SECONDS * 1000 > new Date().getTime()) {
       this.translateService
         .get([
           'secret-show.too-fast_alert.title',

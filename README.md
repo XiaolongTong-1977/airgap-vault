@@ -1,4 +1,14 @@
-# AirGap Vault
+# AirGap Vault — GrapheneOS 定制版
+
+> **Fork 说明**:本仓库是面向 **GrapheneOS** 设备定制的 AirGap Vault,基于上游 [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault)。
+>
+> 定制内容:
+> - Arbitrum (ARB) 协议支持,地址与 ETH 相同,支持 MetaMask/Rabby/imToken 二维码同步
+> - 修复扫码授权黑屏(Arbitrum 签名请求钱包匹配失败 / 空钱包崩溃)
+> - Android 15 (16KB 页对齐)、typeforce 压缩混淆、SQLite 移除等构建修复
+> - 审计驱动的安全修复(ZIP Slip、消息显示、存储迁移等)
+>
+> ⚠️ 本仓库工作区中的 debug 旁路改动仅供本地调试,发布版本不含这些旁路。
 
 <p align="left">
     <img src="./banner.png" />

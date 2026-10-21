@@ -51,6 +51,13 @@ android {
     buildTypes {
         debug {
             buildConfigField "boolean", "APPIUM", "false"
+            // Sign debug builds with the release keystore so they can be
+            // installed OVER a release build (same signature) via `adb install -r`,
+            // preserving app data. Falls back to the default debug key when
+            // keystore.properties is absent.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
         release {
             minifyEnabled false
