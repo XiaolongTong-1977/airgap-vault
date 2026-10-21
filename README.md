@@ -1,52 +1,52 @@
-# AirGap Vault — GrapheneOS 定制版
+# AirGap Vault — GrapheneOS Edition
 
-> **Fork 说明**:本仓库是面向 **GrapheneOS** 设备定制的 AirGap Vault,基于上游 [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault)(v3.35.0)。
+> **Fork note**: This repository is an **GrapheneOS-oriented** customization of AirGap Vault, based on the upstream [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault) (v3.35.0).
 >
-> ⚠️ 本仓库工作区中的 debug 旁路改动仅供本地调试,发布版本不含这些旁路。
+> ⚠️ The debug bypass changes in the working tree are for local debugging only; release builds do not include them.
 
-## 本 Fork 修改说明
+## Modifications in This Fork
 
-以下全部修改由 XiaolongTong-1977 完成,按类别列出:
+All modifications below were made by XiaolongTong-1977, grouped by category:
 
-### 新功能
+### New Features
 
-- **Arbitrum (ARB) 协议支持**(`cafe7c99`)
-  - 新增 `src/app/protocols/arbitrum/` 协议实现(EIP-1559,chainId 42161,Arbiscan 浏览器)
-  - **Arbitrum 地址与 ETH 完全相同**(与 Rabby/MetaMask 等其他 Web3 钱包行为一致),共用派生路径 `m/44'/60'/0'`
-- **Arbitrum 账户多钱包同步**(`c398ded6`)
-  - 通过 `patch-metamask-arbitrum.js`(postinstall 自动执行)扩展 MetaMaskGenerator 白名单
-  - Arbitrum 账户的分享二维码除 AirGap Wallet 外,可选 MetaMask / Rabby / imToken 同步
+- **Arbitrum (ARB) protocol support** (`cafe7c99`)
+  - New protocol implementation in `src/app/protocols/arbitrum/` (EIP-1559, chainId 42161, Arbiscan block explorer)
+  - **Arbitrum addresses are identical to ETH addresses** (consistent with Rabby/MetaMask and other Web3 wallets), sharing the derivation path `m/44'/60'/0'`
+- **Multi-wallet sync for Arbitrum accounts** (`c398ded6`)
+  - Extended the MetaMaskGenerator whitelist via `patch-metamask-arbitrum.js` (applied automatically on postinstall)
+  - Arbitrum account share QR codes can now sync to MetaMask / Rabby / imToken in addition to AirGap Wallet
 
-### Bug 修复
+### Bug Fixes
 
-- **无法创建账户崩溃修复**(`00dab803`)
-  - 修复钱包内添加 ETH/BTC 等任意品种账户时的崩溃(`MainActivity.onSaveInstanceState`)
-- **扫码授权黑屏修复**(`a4eca21c`)
-  - 扫码 ETH-SIGN-REQUEST 后相机黑屏、授权无法继续:Arbitrum 签名请求未纳入 ETH 系列钱包匹配,匹配失败后在 `iac.service.ts` 读 `undefined.publicKey` 抛异常
-  - 修复:`'arbitrum'` 纳入 MetaMask 风格签名匹配(交易签名 + 消息签名两条路径),找不到钱包时优雅弹提示而非崩溃
+- **Fix crash when creating accounts** (`00dab803`)
+  - Fixed the crash when adding accounts of any type (ETH/BTC/etc.) in the wallet (`MainActivity.onSaveInstanceState`)
+- **Fix black screen after scanning a sign request** (`a4eca21c`)
+  - Scanning an ETH-SIGN-REQUEST QR code left the camera black and the authorization could not proceed: Arbitrum sign requests were not included in the ETH-family wallet matching, and a failed match threw `undefined.publicKey` in `iac.service.ts`
+  - Fix: `'arbitrum'` is now matched via the MetaMask-style fingerprint/derivation-path lookup (both transaction-sign and message-sign paths); when no wallet matches, a proper alert is shown instead of crashing
 
-### 构建修复
+### Build Fixes
 
-- **Android 15 支持:16KB 页对齐**(`e9e21542`)
-  - 适配 Android 15 的 16KB 页大小要求;`libsapling.so`/`libtool-checker.so`/`libsqlc-ndk-native-driver.so` 对齐警告待从源码重编译加 `-Wl,-z,max-page-size=16384` 彻底消除
-- **webpack 压缩混淆导致的签名失败修复**(`391513cc`、`e9e21542`)
-  - typeforce 的 ECPair/Point/BigInteger 依赖 `constructor.name`,生产压缩后被混淆导致 BTC 签名报类型错误;`fix-typeforce-ecpair.js` 改为鸭子类型校验
-- **移除 SQLite 依赖**(`e9e21542`)
+- **Android 15 support: 16KB page alignment** (`e9e21542`)
+  - Adapted to Android 15's 16KB page-size requirement; the `libsapling.so`/`libtool-checker.so`/`libsqlc-ndk-native-driver.so` alignment warnings remain and will be fully resolved by recompiling from source with `-Wl,-z,max-page-size=16384`
+- **Fix signature failures caused by webpack minification** (`391513cc`, `e9e21542`)
+  - typeforce's ECPair/Point/BigInteger checks rely on `constructor.name`, which breaks after production minification, causing BTC signature type errors; `fix-typeforce-ecpair.js` replaces them with duck-type checks
+- **Removed the SQLite dependency** (`e9e21542`)
 
-### 安全修复(10 agents 审计 + 5 agents 对抗审计驱动)
+### Security Fixes (driven by a 10-agent audit + 5-agent adversarial review)
 
-- 4 项发布前必修复项(`19ecac4b`):ZIP Slip 路径穿越(canonical path 校验)、多消息二维码全量显示、旧版存储迁移插件、MetaMask Arbitrum 补丁
-- 发布准备(`d0617a14`、`becbdb68`):回滚全部 debug 旁路、关闭 WebView 远程调试(release 自动生效)
+- 4 must-fix pre-release items (`19ecac4b`): ZIP Slip path traversal (canonical path validation), display of all messages in multi-message QR codes, legacy storage migration plugin, MetaMask Arbitrum patch
+- Release preparation (`d0617a14`, `becbdb68`): reverted all debug bypasses, disabled WebView remote debugging (automatic in release builds)
 
-### 调试旁路(仅限本地 debug 构建,见工作区未提交改动)
+### Debug Bypasses (local debug builds only — see uncommitted working-tree changes)
 
-- `secret-generate`:默认关闭陀螺仪、放宽熵源判定(因 CSPRNG 双重混合设计,不削弱最终密钥熵)
-- `secret-rules`:去掉勾选确认门禁
-- `secret-show`:跳过最短查看时间
-- `secret-add`:自动生成 label
-- `build.gradle`:debug 构建复用 release 签名密钥(便于 `adb install -r` 覆盖安装保留数据)
+- `secret-generate`: gyroscope disabled by default, relaxed entropy-source thresholds (does not weaken final key entropy thanks to the dual-CSPRNG mixing design)
+- `secret-rules`: removed the acknowledgement checkbox gate
+- `secret-show`: skipped the minimum viewing-time enforcement
+- `secret-add`: automatic label generation
+- `build.gradle`: debug builds reuse the release signing key (enables `adb install -r` over-the-top installs that preserve app data)
 
-**发布版本均不含上述旁路**(构建时 stash)。
+**None of the above bypasses are present in release builds** (they are stashed during release builds).
 
 <p align="left">
     <img src="./banner.png" />
