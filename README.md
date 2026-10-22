@@ -1,6 +1,6 @@
 # AirGap Vault — GrapheneOS Edition
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+**📖 Languages: English (this file) | [简体中文](README.zh-CN.md)**
 
 > **Fork note**: This repository is an **GrapheneOS-oriented** customization of AirGap Vault, based on the upstream [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault) (v3.35.0).
 >

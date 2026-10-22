@@ -1,6 +1,6 @@
 # AirGap Vault — GrapheneOS 定制版
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+**📖 语言:English | [简体中文(本文件)](README.zh-CN.md)**
 
 > **Fork 说明**:本仓库是面向 **GrapheneOS** 设备定制的 AirGap Vault,基于上游 [airgap-it/airgap-vault](https://github.com/airgap-it/airgap-vault)(v3.35.0)。
 >
